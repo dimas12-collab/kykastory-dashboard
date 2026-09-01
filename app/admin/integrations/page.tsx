@@ -1,0 +1,1 @@
+import { AdminPage } from "../../../components/admin-page"; export default function Page(){return <AdminPage kind="integrations" eyebrow="System" title="Integrations" description="Pantau koneksi WeddingPress dan status sinkronisasi."/>}

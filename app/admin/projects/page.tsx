@@ -1,0 +1,1 @@
+import { AdminPage } from "../../../components/admin-page"; export default function Page(){return <AdminPage kind="projects" eyebrow="Administration" title="Invitations" description="Kelola seluruh project undangan."/>}

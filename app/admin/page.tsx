@@ -1,0 +1,1 @@
+import { AdminPage } from "../../components/admin-page"; export default function Page(){return <AdminPage kind="dashboard" eyebrow="Admin workspace" title="Overview" description="Pantau seluruh aktivitas Kykastory."/>}

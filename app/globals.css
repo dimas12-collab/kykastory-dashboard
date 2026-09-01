@@ -1,0 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root { --font-inter: 'DM Sans'; --font-playfair: 'Playfair Display'; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #faf9f7; color: #191919; font-family: 'DM Sans', Arial, sans-serif; }
+button, input, textarea, select { font: inherit; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; }

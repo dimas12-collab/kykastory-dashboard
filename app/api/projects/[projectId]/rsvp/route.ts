@@ -1,0 +1,2 @@
+import { NextResponse } from "next/server"; import { desc,eq } from "drizzle-orm"; import { db } from "../../../../../db"; import { rsvps } from "../../../../../db/schema"; import { bootstrap } from "../../../../../lib/server";
+export async function GET(_:Request,{params}:{params:Promise<{projectId:string}>}){bootstrap();const {projectId}=await params;return NextResponse.json({data:db.select().from(rsvps).where(eq(rsvps.projectId,projectId)).orderBy(desc(rsvps.submittedAt)).all()});}
