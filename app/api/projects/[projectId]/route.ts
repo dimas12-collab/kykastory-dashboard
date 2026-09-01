@@ -4,6 +4,7 @@ import { auth } from "../../../../lib/auth";
 import { db, sqlite } from "../../../../db";
 import { projects } from "../../../../db/schema";
 import { bootstrap } from "../../../../lib/server";
+import { getProjectAccess } from "../../../../lib/project-access";
 
 async function requireAdmin(request: NextRequest) {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -12,9 +13,10 @@ async function requireAdmin(request: NextRequest) {
   return user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 }
 
-export async function GET(_: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   bootstrap();
   const { projectId } = await params;
+  if (!(await getProjectAccess(request, projectId)).project) return NextResponse.json({ error: "Akses project ditolak" }, { status: 403 });
   const project = db.select().from(projects).where(eq(projects.id, projectId)).get();
   return project ? NextResponse.json({ data: project }) : NextResponse.json({ error: "Project tidak ditemukan" }, { status: 404 });
 }
