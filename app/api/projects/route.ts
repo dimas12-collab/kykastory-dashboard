@@ -1,2 +1,2 @@
 import { NextResponse } from "next/server"; import { projects } from "../../../db/schema"; import { bootstrap } from "../../../lib/server";
-export async function GET(){bootstrap(); return NextResponse.json({data:{id:"demo-project",name:"Wedding Chika & Fariz",coupleName:"Chika & Fariz",slug:"chika-fariz",eventDate:"2026-10-17",invitationUrl:"kykastory.com/chika-fariz",status:"ACTIVE"}});}
+export async function GET(){bootstrap(); return NextResponse.json({data:{id:"demo-project",name:"Wedding Chika & Fariz",coupleName:"Chika & Fariz",slug:"chika-fariz",eventDate:"2026-10-17",invitationUrl:"kykastory.com/chika-fariz",coverImageUrl:"https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1200&q=80",status:"ACTIVE"}});}
