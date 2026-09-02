@@ -63,11 +63,14 @@ final class Kykastory_WeddingPress_Bridge {
 
     private function mapping_for( $post_id, $form_id ) {
         $o = $this->options();
+        $form_match = null;
         foreach ( preg_split('/\r?\n/', $o['mappings']) as $line ) {
             $parts = array_map('trim', explode('|', $line));
             if ( count($parts) < 2 || ! $parts[0] || ! $parts[1] ) continue;
             if ( (int)$parts[0] === (int)$post_id && ( empty($parts[2]) || $parts[2] === $form_id ) ) return [ $parts[1], $parts[2] ?? '' ];
+            if ( $form_id && ! empty($parts[2]) && $parts[2] === $form_id ) $form_match = [ $parts[1], $parts[2] ];
         }
+        if ( $form_match ) return $form_match;
         return [ $o['project_id'], $o['form_id'] ];
     }
 
