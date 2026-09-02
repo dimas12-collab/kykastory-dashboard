@@ -7,18 +7,70 @@ import { Badge, Button, Card } from "../../components/ui";
 
 type Project = { coupleName: string; name: string; eventDate: string; invitationUrl: string; coverImageUrl?: string | null; status: string };
 type Stats = { totalGuests: number; sentGuests: number; totalRsvp: number; attendingRsvp: number; notAttendingRsvp: number; maybeRsvp: number; totalAttendance: number; totalMessages: number };
+type Wish = { id: number; guestName: string; message: string; submittedAt: string };
 const emptyStats: Stats = { totalGuests: 0, sentGuests: 0, totalRsvp: 0, attendingRsvp: 0, notAttendingRsvp: 0, maybeRsvp: 0, totalAttendance: 0, totalMessages: 0 };
 
 export default function Dashboard() {
-  const [project, setProject] = useState<Project | null>(null); const [stats, setStats] = useState(emptyStats); const [sync, setSync] = useState("Terakhir diperbarui otomatis setiap 30 detik"); const [loading, setLoading] = useState(true);
-  const load = useCallback(async () => { try { const projects = await fetch("/api/projects").then(r => r.json()); const current = projects.data?.[0]; if (!current) return; setProject(current); const result = await fetch(`/api/projects/${current.id}/stats`).then(r => r.json()); if (result.data) setStats(result.data); } finally { setLoading(false); } }, []);
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 30000); return () => window.clearInterval(timer); }, [load]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [stats, setStats] = useState(emptyStats);
+  const [wishes, setWishes] = useState<Wish[]>([]);
+  const [sync, setSync] = useState("Terakhir diperbarui otomatis setiap 30 detik");
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const projects = await fetch("/api/projects").then(r => r.json());
+      const current = projects.data?.[0];
+      if (!current) return;
+      setProject(current);
+      const [statsResult, rsvpResult] = await Promise.all([
+        fetch(`/api/projects/${current.id}/stats`).then(r => r.json()),
+        fetch(`/api/projects/${current.id}/rsvp`).then(r => r.json()),
+      ]);
+      if (statsResult.data) setStats(statsResult.data);
+      if (rsvpResult.data) setWishes(rsvpResult.data.filter((row: Wish) => row.message?.trim()).slice(0, 3));
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => void load(), 30000);
+    return () => window.clearInterval(timer);
+  }, [load]);
+
   if (loading) return <div className="py-20 text-center text-sm text-stone-500">Memuat dashboard...</div>;
   if (!project) return null;
   const days = Math.max(0, Math.ceil((new Date(project.eventDate).getTime() - Date.now()) / 86400000));
   const refresh = () => { setSync("Baru saja diperbarui"); void load(); window.setTimeout(() => setSync("Terakhir diperbarui otomatis setiap 30 detik"), 2500); };
-  return <div><div className="flex items-end justify-between gap-4"><div><p className="text-xs font-bold text-stone-700">Overview</p><p className="mt-1 text-xs text-stone-400">Ringkasan respons undanganmu.</p></div><Button className="h-9 border border-stone-200 bg-white px-3 text-xs text-stone-600" onClick={refresh}><Clock3 size={14}/> Refresh</Button></div><div className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-3"><OverviewCard icon={CheckSquare2} label="Total RSVP" value={stats.totalRsvp}/><OverviewCard icon={UsersRound} label="Total Kehadiran" value={stats.totalAttendance}/><OverviewCard icon={MessageCircle} label="Total Ucapan" value={stats.totalMessages}/></div><Card className="mt-7 overflow-hidden"><div className="grid lg:grid-cols-[1.2fr_1fr]"><div className="relative min-h-[230px] p-7 md:p-9"><div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: project.coverImageUrl ? `url(${project.coverImageUrl})` : undefined }}/><div className="relative"><Badge tone="green">● {project.status}</Badge><h1 className="mt-4 font-display text-4xl md:text-5xl">{project.coupleName}</h1><p className="mt-3 text-sm text-stone-500">{new Date(project.eventDate).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p><div className="mt-7 flex items-end gap-3"><div><p className="text-4xl font-bold tracking-tight">{days}</p><p className="text-xs text-stone-500">hari lagi menuju hari bahagia</p></div><CalendarDays className="mb-1 text-gold" size={24}/></div></div></div><div className="flex items-center border-t border-stone-100 bg-[#f5f0e8] p-7 lg:border-l lg:border-t-0 md:p-9"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-stone-500">Invitation link</p><p className="mt-3 break-all font-display text-xl">{project.invitationUrl}</p><Button className="mt-5 bg-ink text-white" onClick={() => { void navigator.clipboard?.writeText(`https://${project.invitationUrl}`); setSync("Link undangan disalin"); }}><Copy size={15}/> Salin link</Button></div></div></div></Card><div className="mt-7 grid gap-4 sm:grid-cols-3"><Stat icon={Users} label="Total Tamu" value={stats.totalGuests} note="Tamu di project ini"/><Stat icon={Check} label="Sudah Terkirim" value={stats.sentGuests} note={stats.totalGuests ? `${Math.round(stats.sentGuests / stats.totalGuests * 100)}% dari total tamu` : "Belum ada tamu"}/><Stat icon={Clock3} label="Belum Terkirim" value={stats.totalGuests - stats.sentGuests} note="Perlu ditindaklanjuti" orange/></div><div className="mt-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]"><Card className="p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-gold">RSVP overview</p><h2 className="mt-2 text-xl font-bold">Respons tamu</h2></div><a href="/dashboard/rsvp" className="text-xs font-bold text-gold">Lihat semua →</a></div><div className="mt-7 flex flex-col items-center gap-8 sm:flex-row"><div className="relative flex h-44 w-44 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(#191919 0 ${stats.totalRsvp ? stats.attendingRsvp / stats.totalRsvp * 100 : 0}%,#c8a977 ${stats.totalRsvp ? stats.attendingRsvp / stats.totalRsvp * 100 : 0}% ${stats.totalRsvp ? (stats.attendingRsvp + stats.notAttendingRsvp) / stats.totalRsvp * 100 : 0}%,#e7e1d7 0 100%)` }}><div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white"><span className="text-3xl font-bold">{stats.totalRsvp}</span><span className="text-xs text-stone-400">total RSVP</span></div></div><div className="w-full space-y-4 text-sm"><Legend color="bg-ink" label="Hadir" value={stats.attendingRsvp}/><Legend color="bg-gold" label="Tidak hadir" value={stats.notAttendingRsvp}/><Legend color="bg-stone-200" label="Masih ragu" value={stats.maybeRsvp}/></div></div></Card><Card className="p-6"><div className="flex items-center gap-3"><MessageCircle size={20} className="text-gold"/><div><p className="text-xs font-bold uppercase tracking-[.16em] text-gold">Project aktif</p><h2 className="mt-2 text-xl font-bold">{project.name}</h2></div></div><p className="mt-5 text-sm leading-6 text-stone-500">Data tamu dan RSVP yang tampil di dashboard ini berasal dari project yang di-assign ke akunmu.</p></Card></div><p className="mt-6 text-xs text-stone-400">{sync}</p></div>;
+
+  return <div>
+    <div className="flex items-end justify-between gap-4">
+      <div><p className="text-xs font-bold text-stone-700">Overview</p><p className="mt-1 text-xs text-stone-400">Ringkasan respons undanganmu.</p></div>
+      <Button className="h-9 border border-stone-200 bg-white px-3 text-xs text-stone-600" onClick={refresh}><Clock3 size={14}/> Refresh</Button>
+    </div>
+    <div className="mt-4 grid max-w-3xl gap-3 sm:grid-cols-3">
+      <OverviewCard icon={CheckSquare2} label="Total RSVP" value={stats.totalRsvp}/>
+      <OverviewCard icon={UsersRound} label="Total Kehadiran" value={stats.totalAttendance}/>
+      <OverviewCard icon={MessageCircle} label="Total Ucapan" value={stats.totalMessages}/>
+    </div>
+    <Card className="mt-7 overflow-hidden">
+      <div className="grid lg:grid-cols-[1.2fr_1fr]">
+        <div className="relative min-h-[230px] p-7 md:p-9">
+          <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: project.coverImageUrl ? `url(${project.coverImageUrl})` : undefined }}/>
+          <div className="relative"><Badge tone="green">● {project.status}</Badge><h1 className="mt-4 font-display text-4xl md:text-5xl">{project.coupleName}</h1><p className="mt-3 text-sm text-stone-500">{new Date(project.eventDate).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p><div className="mt-7 flex items-end gap-3"><div><p className="text-4xl font-bold tracking-tight">{days}</p><p className="text-xs text-stone-500">hari lagi menuju hari bahagia</p></div><CalendarDays className="mb-1 text-gold" size={24}/></div></div>
+        </div>
+        <div className="flex items-center border-t border-stone-100 bg-[#f5f0e8] p-7 lg:border-l lg:border-t-0 md:p-9"><div><p className="text-xs font-bold uppercase tracking-[.15em] text-stone-500">Invitation link</p><p className="mt-3 break-all font-display text-xl">{project.invitationUrl}</p><Button className="mt-5 bg-ink text-white" onClick={() => { void navigator.clipboard?.writeText(`https://${project.invitationUrl}`); setSync("Link undangan disalin"); }}><Copy size={15}/> Salin link</Button></div></div>
+      </div>
+    </Card>
+    <div className="mt-7 grid gap-4 sm:grid-cols-3"><Stat icon={Users} label="Total Tamu" value={stats.totalGuests} note="Tamu di project ini"/><Stat icon={Check} label="Sudah Terkirim" value={stats.sentGuests} note={stats.totalGuests ? `${Math.round(stats.sentGuests / stats.totalGuests * 100)}% dari total tamu` : "Belum ada tamu"}/><Stat icon={Clock3} label="Belum Terkirim" value={stats.totalGuests - stats.sentGuests} note="Perlu ditindaklanjuti" orange/></div>
+    <div className="mt-7 grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
+      <Card className="p-6"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-gold">RSVP overview</p><h2 className="mt-2 text-xl font-bold">Respons tamu</h2></div><a href="/dashboard/rsvp" className="text-xs font-bold text-gold">Lihat semua →</a></div><div className="mt-7 flex flex-col items-center gap-8 sm:flex-row"><div className="relative flex h-44 w-44 shrink-0 items-center justify-center rounded-full" style={{ background: `conic-gradient(#191919 0 ${stats.totalRsvp ? stats.attendingRsvp / stats.totalRsvp * 100 : 0}%,#c8a977 ${stats.totalRsvp ? stats.attendingRsvp / stats.totalRsvp * 100 : 0}% ${stats.totalRsvp ? (stats.attendingRsvp + stats.notAttendingRsvp) / stats.totalRsvp * 100 : 0}%,#e7e1d7 0 100%)` }}><div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white"><span className="text-3xl font-bold">{stats.totalRsvp}</span><span className="text-xs text-stone-400">total RSVP</span></div></div><div className="w-full space-y-4 text-sm"><Legend color="bg-ink" label="Hadir" value={stats.attendingRsvp}/><Legend color="bg-gold" label="Tidak hadir" value={stats.notAttendingRsvp}/><Legend color="bg-stone-200" label="Masih ragu" value={stats.maybeRsvp}/></div></div></Card>
+      <Card className="p-6"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><MessageCircle size={20} className="text-gold"/><div><p className="text-xs font-bold uppercase tracking-[.16em] text-gold">Ucapan terbaru</p><h2 className="mt-1 text-xl font-bold">Dari para tamu</h2></div></div><a href="/dashboard/rsvp" className="text-xs font-bold text-gold">Lihat semua →</a></div><div className="mt-5 space-y-4">{wishes.length ? wishes.map(wish => <div className="border-b border-stone-100 pb-4 last:border-0 last:pb-0" key={wish.id}><div className="flex items-center justify-between gap-3"><p className="text-sm font-bold">{wish.guestName}</p><p className="shrink-0 text-[11px] text-stone-400">{new Date(wish.submittedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</p></div><p className="mt-1 line-clamp-2 text-sm leading-6 text-stone-500">{wish.message}</p></div>) : <p className="rounded-xl bg-stone-50 p-4 text-sm leading-6 text-stone-500">Belum ada ucapan dari tamu. Ucapan baru akan muncul otomatis setelah RSVP diterima.</p>}</div></Card>
+    </div>
+    <p className="mt-6 text-xs text-stone-400">{sync}</p>
+  </div>;
 }
+
 function OverviewCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) { return <Card className="border-0 bg-stone-100/80 p-4 shadow-none"><Icon size={16} className="text-stone-500"/><p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-stone-400">{label}</p><p className="mt-1 text-2xl font-bold">{value.toLocaleString("id-ID")}</p></Card>; }
 function Stat({ icon: Icon, label, value, note, orange = false }: { icon: LucideIcon; label: string; value: number; note: string; orange?: boolean }) { return <Card className="p-5"><div className={orange ? "rounded-xl bg-orange-50 p-2.5 text-orange-600" : "rounded-xl bg-stone-100 p-2.5 text-stone-700"}><Icon size={18}/></div><p className="mt-5 text-xs text-stone-500">{label}</p><p className="mt-1 text-3xl font-bold">{value}</p><p className="mt-2 text-[11px] text-stone-400">{note}</p></Card>; }
 function Legend({ color, label, value }: { color: string; label: string; value: number }) { return <div className="flex items-center justify-between"><span className="flex items-center gap-2"><span className={`h-2.5 w-2.5 rounded-full ${color}`}/>{label}</span><span className="font-bold">{value}</span></div>; }
