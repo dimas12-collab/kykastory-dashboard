@@ -6,6 +6,8 @@ const now = () => new Date();
 
 export function bootstrap() {
   ensureDatabase();
+  // Demo fixtures are opt-in. Production databases must remain empty after a reset.
+  if (process.env.SEED_DEMO_DATA !== "true") return;
   const demoUser = sqlite.prepare("SELECT id FROM user WHERE email = 'demo@kykastory.local'").get() as { id?: string } | undefined;
   if (demoUser?.id) {
     sqlite.prepare("UPDATE projects SET owner_id = ? WHERE id = 'demo-project' AND owner_id = 'demo-user'").run(demoUser.id);

@@ -42,7 +42,8 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   if (!await getAdminApiSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const id = request.nextUrl.searchParams.get("id"); if (!id) return NextResponse.json({ error: "ID client wajib diisi." }, { status: 400 });
-  const linked = sqlite.prepare("SELECT COUNT(*) as count FROM project_members WHERE user_id = ?").get(id) as { count: number };
-  if (linked.count > 0) return NextResponse.json({ error: "Client masih memiliki project. Lepas assignment terlebih dahulu." }, { status: 409 });
-  const deleted = sqlite.prepare("DELETE FROM user WHERE id = ? AND role = 'CLIENT'").run(id); return deleted.changes ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
+  const client = sqlite.prepare("SELECT id FROM user WHERE id = ? AND role = 'CLIENT'").get(id);
+  if (!client) return NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
+  const remove = sqlite.transaction(() => { sqlite.prepare("UPDATE projects SET owner_id = 'unassigned', updated_at = ? WHERE owner_id = ?").run(Date.now(), id); sqlite.prepare("DELETE FROM project_members WHERE user_id = ?").run(id); return sqlite.prepare("DELETE FROM user WHERE id = ? AND role = 'CLIENT'").run(id); });
+  const deleted = remove(); return deleted.changes ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
 }
