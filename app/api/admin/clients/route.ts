@@ -26,3 +26,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Client gagal dibuat. Email mungkin sudah terdaftar." }, { status: 422 });
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  if (!await getAdminApiSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  const id = String(body.id || ""); const name = String(body.name || "").trim(); const email = String(body.email || "").trim().toLowerCase();
+  if (!id || !name || !email) return NextResponse.json({ error: "ID, nama, dan email wajib diisi." }, { status: 400 });
+  const existing = sqlite.prepare("SELECT id FROM user WHERE id = ? AND role = 'CLIENT'").get(id);
+  if (!existing) return NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
+  try { sqlite.prepare("UPDATE user SET name = ?, email = ? WHERE id = ?").run(name, email, id); return NextResponse.json({ ok: true }); } catch { return NextResponse.json({ error: "Email mungkin sudah digunakan." }, { status: 422 }); }
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!await getAdminApiSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const id = request.nextUrl.searchParams.get("id"); if (!id) return NextResponse.json({ error: "ID client wajib diisi." }, { status: 400 });
+  const linked = sqlite.prepare("SELECT COUNT(*) as count FROM project_members WHERE user_id = ?").get(id) as { count: number };
+  if (linked.count > 0) return NextResponse.json({ error: "Client masih memiliki project. Lepas assignment terlebih dahulu." }, { status: 409 });
+  const deleted = sqlite.prepare("DELETE FROM user WHERE id = ? AND role = 'CLIENT'").run(id); return deleted.changes ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
+}

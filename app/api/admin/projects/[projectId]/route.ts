@@ -14,3 +14,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.clientId !== undefined) { sqlite.prepare("DELETE FROM project_members WHERE project_id = ?").run(projectId); if (body.clientId) db.insert(projectMembers).values({ projectId, userId: String(body.clientId), createdAt: new Date() }).run(); }
   return NextResponse.json({ data: updated });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
+  if (!await getAdminApiSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  bootstrap(); const { projectId } = await params;
+  const deleted = db.delete(projects).where(eq(projects.id, projectId)).returning().get();
+  return deleted ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Project tidak ditemukan" }, { status: 404 });
+}
