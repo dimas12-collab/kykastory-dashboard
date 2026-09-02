@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, CheckCircle2, Clipboard, ExternalLink, RefreshCw, Send, Settings2, Wifi } from "lucide-react";
+import { Check, Clipboard, ExternalLink, RefreshCw, Send, Settings2, Wifi } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminShell } from "../../../components/dashboard-shell";
 import { Badge, Button, Card } from "../../../components/ui";
