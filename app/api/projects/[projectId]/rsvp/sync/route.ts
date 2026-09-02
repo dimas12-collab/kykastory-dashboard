@@ -7,7 +7,8 @@ import { getProjectAccess } from "../../../../../../lib/project-access";
 export async function POST(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
   bootstrap(); const { projectId } = await params;
   const access = await getProjectAccess(request, projectId);
-  if (!access.project) return NextResponse.json({ error: "Akses project ditolak" }, { status: 403 });
+  const webhookAuthorized = Boolean(process.env.WEDDINGPRESS_WEBHOOK_SECRET && request.headers.get("x-weddingpress-secret") === process.env.WEDDINGPRESS_WEBHOOK_SECRET);
+  if (!access.project && !webhookAuthorized) return NextResponse.json({ error: "Akses project ditolak" }, { status: 403 });
   const body = await request.json().catch(() => ({}));
   const entries = Array.isArray(body.rsvps) ? body.rsvps : Array.isArray(body.data) ? body.data : [];
   if (!entries.length) return NextResponse.json({ error: "Payload RSVP kosong. Gunakan { rsvps: [...] }." }, { status: 400 });
