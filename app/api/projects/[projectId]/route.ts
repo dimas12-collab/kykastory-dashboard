@@ -22,12 +22,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ projectId: string }> }) {
-  if (!await requireAdmin(request)) return NextResponse.json({ error: "Akses admin diperlukan" }, { status: 403 });
   bootstrap();
   const { projectId } = await params;
+  const admin = await requireAdmin(request);
+  const access = await getProjectAccess(request, projectId);
+  if (!admin && !access.project) return NextResponse.json({ error: "Akses project ditolak" }, { status: 403 });
   const body = await request.json();
-  const coverImageUrl = typeof body.coverImageUrl === "string" ? body.coverImageUrl.trim() : "";
-  if (coverImageUrl && !/^https?:\/\//i.test(coverImageUrl)) return NextResponse.json({ error: "URL thumbnail harus menggunakan http atau https" }, { status: 400 });
-  const updated = db.update(projects).set({ coverImageUrl: coverImageUrl || null, updatedAt: new Date() }).where(eq(projects.id, projectId)).returning().get();
+  const fields = ["name", "coupleName", "eventDate", "invitationUrl", "coverImageUrl", "wordpressPostId", "wordpressUrl", "weddingpressSyncUrl"] as const;
+  const values: Record<string, unknown> = { updatedAt: new Date() };
+  for (const field of fields) if (field in body) values[field] = body[field];
+  if (typeof values.coverImageUrl === "string" && values.coverImageUrl && !/^https?:\/\//i.test(values.coverImageUrl)) return NextResponse.json({ error: "URL thumbnail harus menggunakan http atau https" }, { status: 400 });
+  if ("wordpressPostId" in values && values.wordpressPostId !== null && (!Number.isInteger(Number(values.wordpressPostId)) || Number(values.wordpressPostId) < 1)) return NextResponse.json({ error: "WordPress Post ID tidak valid" }, { status: 400 });
+  const updated = db.update(projects).set(values).where(eq(projects.id, projectId)).returning().get();
   return updated ? NextResponse.json({ data: updated }) : NextResponse.json({ error: "Project tidak ditemukan" }, { status: 404 });
 }
