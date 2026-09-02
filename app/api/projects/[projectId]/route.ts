@@ -28,7 +28,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const access = await getProjectAccess(request, projectId);
   if (!admin && !access.project) return NextResponse.json({ error: "Akses project ditolak" }, { status: 403 });
   const body = await request.json();
-  const fields = ["name", "coupleName", "eventDate", "invitationUrl", "coverImageUrl", "wordpressPostId", "wordpressUrl", "weddingpressSyncUrl"] as const;
+  const fields = admin ? ["name", "coupleName", "eventDate", "invitationUrl", "coverImageUrl", "wordpressPostId", "wordpressUrl", "weddingpressSyncUrl"] : ["name", "coupleName", "eventDate", "invitationUrl", "coverImageUrl"];
   const values: Record<string, unknown> = { updatedAt: new Date() };
   for (const field of fields) if (field in body) values[field] = body[field];
   if (typeof values.coverImageUrl === "string" && values.coverImageUrl && !/^https?:\/\//i.test(values.coverImageUrl)) return NextResponse.json({ error: "URL thumbnail harus menggunakan http atau https" }, { status: 400 });

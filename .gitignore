@@ -8,3 +8,4 @@ data/*.db-wal
 !.env.example
 npm-debug.log*
 *.tsbuildinfo
+.tmp-wdp-inspect/

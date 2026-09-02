@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kykastory WeddingPress Bridge
  * Description: Mengirim entry Guestbook WeddingPress ke project Kykastory yang sesuai.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Kykastory
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -13,9 +13,50 @@ final class Kykastory_WeddingPress_Bridge {
     public function __construct() {
         add_action( 'admin_menu', [ $this, 'add_settings_page' ] );
         add_action( 'admin_init', [ $this, 'register_settings' ] );
+        add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
         // WeddingPress runs its own handler at priority 5 and calls wp_die().
         add_action( 'wp_ajax_guestbook_box_submit', [ $this, 'forward_guestbook' ], 4 );
         add_action( 'wp_ajax_nopriv_guestbook_box_submit', [ $this, 'forward_guestbook' ], 4 );
+    }
+
+    public function register_rest_routes() {
+        register_rest_route( 'kykastory/v1', '/rsvp', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [ $this, 'get_guestbook_entries' ],
+            'permission_callback' => [ $this, 'authorize_rest_request' ],
+            'args' => [ 'post_id' => [ 'required' => true, 'sanitize_callback' => 'absint' ], 'form_id' => [ 'required' => false, 'sanitize_callback' => 'sanitize_text_field' ] ],
+        ] );
+    }
+
+    public function authorize_rest_request( $request ) {
+        $o = $this->options();
+        $secret = $request->get_header( 'x-weddingpress-secret' );
+        return ! empty( $o['secret'] ) && is_string( $secret ) && hash_equals( $o['secret'], $secret );
+    }
+
+    public function get_guestbook_entries( $request ) {
+        global $wpdb;
+        $post_id = absint( $request->get_param( 'post_id' ) );
+        $form_id = sanitize_text_field( $request->get_param( 'form_id' ) );
+        $table = $wpdb->prefix . 'wdp_guestbooks';
+        $sql = "SELECT id, post_id, form_id, name, message, confirm, created_at FROM {$table} WHERE post_id = %d";
+        $params = [ $post_id ];
+        if ( $form_id ) { $sql .= ' AND form_id = %s'; $params[] = $form_id; }
+        $sql .= ' ORDER BY created_at DESC';
+        $rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
+        $rsvps = array_map( function( $row ) {
+            return [
+                'externalId' => (int) $row->id,
+                'postId' => (int) $row->post_id,
+                'formId' => (string) $row->form_id,
+                'name' => (string) $row->name,
+                'message' => (string) $row->message,
+                'status' => (string) $row->confirm,
+                'guestCount' => 1,
+                'submittedAt' => wp_date( DATE_ATOM, strtotime( $row->created_at ) ),
+            ];
+        }, $rows ?: [] );
+        return rest_ensure_response( [ 'source' => 'WeddingPress', 'rsvps' => $rsvps, 'count' => count( $rsvps ) ] );
     }
 
     private function options() {

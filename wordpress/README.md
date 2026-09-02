@@ -31,6 +31,17 @@ Format: `post_id|project_id|form_id`. Post ID diambil dari WordPress dan project
 7. Kirim satu RSVP percobaan dari halaman undangan WordPress.
 8. Cek **Dashboard Kykastory → RSVP & Ucapan**.
 
+## Sinkronisasi penuh (termasuk penghapusan)
+
+Bridge versi 1.2 menyediakan endpoint baca yang aman:
+
+```text
+GET https://DOMAIN-WORDPRESS.com/wp-json/kykastory/v1/rsvp?post_id=277
+Header: x-weddingpress-secret: SECRET_YANG_SAMA
+```
+
+Di **Admin → Invitations**, isi **WordPress Post ID**, **WordPress URL**, dan opsional **WeddingPress Sync URL** dengan endpoint di atas. Setelah itu tombol **Sync data** pada halaman RSVP Kykastory akan menyamakan seluruh data project dengan tabel Guestbook WordPress. Entry yang sudah dihapus dari WordPress akan ikut hilang dari Kykastory.
+
 Bridge berjalan sebelum handler WeddingPress pada priority 4, karena handler plugin WeddingPress berjalan pada priority 5 dan mengakhiri request dengan `wp_die()`.
 
 ## Catatan
