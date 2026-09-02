@@ -12,10 +12,19 @@ Bridge ini dibuat untuk `wdp-pro-v4.0.6` yang menyimpan Guestbook pada tabel `wp
 
 ```text
 Aktifkan bridge: dicentang
-Endpoint: https://id.kykastory.com/api/projects/PROJECT_ID/rsvp/sync
-Project ID: demo-project
+Base URL: https://id.kykastory.com
+Fallback Project ID: demo-project
 Webhook secret: sama dengan WEDDINGPRESS_WEBHOOK_SECRET di Coolify
-Form ID: budiriri
+Fallback Form ID: budiriri
+
+Untuk beberapa undangan, gunakan mapping satu baris per undangan:
+
+```text
+277|project-chika|budiriri
+302|project-rara|form-rara
+```
+
+Format: `post_id|project_id|form_id`. Post ID diambil dari WordPress dan project ID dari Kykastory Admin → Invitations. Mapping berdasarkan Post ID memiliki prioritas utama.
 ```
 
 6. Simpan pengaturan.
