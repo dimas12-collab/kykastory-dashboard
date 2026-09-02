@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "../../../../lib/auth";
 import { getAdminApiSession } from "../../../../lib/admin-api";
 import { sqlite } from "../../../../db";
+import { hashPassword } from "@better-auth/utils/password";
 
 export async function GET() {
   const session = await getAdminApiSession();
@@ -30,11 +31,12 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   if (!await getAdminApiSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  const id = String(body.id || ""); const name = String(body.name || "").trim(); const email = String(body.email || "").trim().toLowerCase();
+  const id = String(body.id || ""); const name = String(body.name || "").trim(); const email = String(body.email || "").trim().toLowerCase(); const password = String(body.password || "");
   if (!id || !name || !email) return NextResponse.json({ error: "ID, nama, dan email wajib diisi." }, { status: 400 });
   const existing = sqlite.prepare("SELECT id FROM user WHERE id = ? AND role = 'CLIENT'").get(id);
   if (!existing) return NextResponse.json({ error: "Client tidak ditemukan." }, { status: 404 });
-  try { sqlite.prepare("UPDATE user SET name = ?, email = ? WHERE id = ?").run(name, email, id); return NextResponse.json({ ok: true }); } catch { return NextResponse.json({ error: "Email mungkin sudah digunakan." }, { status: 422 }); }
+  if (password && password.length < 8) return NextResponse.json({ error: "Password minimal 8 karakter." }, { status: 400 });
+  try { sqlite.prepare("UPDATE user SET name = ?, email = ?, updatedAt = ? WHERE id = ?").run(name, email, Date.now(), id); if (password) sqlite.prepare("UPDATE account SET password = ?, updatedAt = ? WHERE userId = ? AND providerId = 'credential'").run(await hashPassword(password), Date.now(), id); return NextResponse.json({ ok: true }); } catch { return NextResponse.json({ error: "Email mungkin sudah digunakan." }, { status: 422 }); }
 }
 
 export async function DELETE(request: NextRequest) {
